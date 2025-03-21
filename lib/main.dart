@@ -33,12 +33,12 @@ class _MyAppViewState extends State<MyAppView> {
   final defaultDevicePrefix = 'PROV';
 
   String feedbackMessage = '';
-  String? selectedWifiNetwork;
 
   final prefixController = TextEditingController();
   final proofOfPossessionController = TextEditingController(text: 'abcd1234');
   final passphraseController = TextEditingController();
   final customDataController = TextEditingController();
+  final ssidController = TextEditingController(); // New controller for manual SSID entry
 
   pushFeedback(String msg) {
     setState(() {
@@ -103,8 +103,8 @@ class _MyAppViewState extends State<MyAppView> {
       emptyFields.add('Proof of Possession');
     }
 
-    if (selectedWifiNetwork == null) {
-      emptyFields.add('WiFi Network (not selected)');
+    if (ssidController.text.isEmpty) {
+      emptyFields.add('WiFi SSID');
     }
 
     if (passphraseController.text.isEmpty) {
@@ -126,23 +126,24 @@ class _MyAppViewState extends State<MyAppView> {
 
   void startProvisioning(BuildContext context) {
     final state = context.read<EspProvisioningBloc>().state;
-    if (state.bluetoothDevice.isEmpty || selectedWifiNetwork == null) {
-      pushFeedback('Error: Bluetooth device or WiFi network not selected');
+    if (state.bluetoothDevice.isEmpty) {
+      pushFeedback('Error: Bluetooth device not selected');
       return;
     }
 
+    // Using the manually entered SSID instead of the selected one
     context.read<EspProvisioningBloc>().add(
         EspProvisioningEventWifiSelected(
             state.bluetoothDevice,
             proofOfPossessionController.text,
-            selectedWifiNetwork!,
+            ssidController.text, // Use the manually entered SSID
             passphraseController.text,
             customDataController.text
         )
     );
 
     pushFeedback(
-        'Provisioning WiFi $selectedWifiNetwork on ${state.bluetoothDevice}'
+        'Provisioning WiFi ${ssidController.text} on ${state.bluetoothDevice}'
     );
   }
 
@@ -266,13 +267,6 @@ class _MyAppViewState extends State<MyAppView> {
                               icon: Icons.settings,
                               title: 'Device Configuration',
                               children: [
-                                // _buildInputField(
-                                //   label: 'Device Prefix',
-                                //   controller: prefixController,
-                                //   hintText: 'enter device prefix',
-                                //   prefixIcon: Icons.device_hub,
-                                // ),
-                                // SizedBox(height: defaultPadding),
                                 _buildInputField(
                                   label: 'Proof of Possession',
                                   controller: proofOfPossessionController,
@@ -322,7 +316,7 @@ class _MyAppViewState extends State<MyAppView> {
                                             context.read<EspProvisioningBloc>().add(
                                                 EspProvisioningEventBleSelected(bluetoothDevice,
                                                     proofOfPossessionController.text));
-                                            pushFeedback('Scanning WiFi on $bluetoothDevice');
+                                            pushFeedback('Selected device: $bluetoothDevice');
                                           },
                                         );
                                       },
@@ -333,48 +327,14 @@ class _MyAppViewState extends State<MyAppView> {
 
                             _buildSectionCard(
                               icon: Icons.wifi,
-                              title: 'WiFi Networks',
+                              title: 'WiFi Configuration',
                               children: [
-                                if (state.wifiNetworks.isEmpty)
-                                  _buildEmptyListPlaceholder('No WiFi networks found. Select a bluetooth device first.')
-                                else
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      color: Colors.grey.shade100,
-                                    ),
-                                    constraints: const BoxConstraints(maxHeight: 200),
-                                    child: ListView.builder(
-                                      itemCount: state.wifiNetworks.length,
-                                      shrinkWrap: true,
-                                      padding: EdgeInsets.zero,
-                                      itemBuilder: (context, i) {
-                                        final isSelected = state.wifiNetworks[i] == selectedWifiNetwork;
-                                        return ListTile(
-                                          leading: const Icon(Icons.wifi, color: Colors.green),
-                                          title: Text(
-                                            state.wifiNetworks[i],
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w500,
-                                              color: isSelected ? Theme.of(context).colorScheme.primary : null,
-                                            ),
-                                          ),
-                                          trailing: isSelected
-                                              ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
-                                              : const Icon(Icons.arrow_forward_ios, size: 16),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          tileColor: isSelected ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3) : null,
-                                          onTap: () {
-                                            setState(() {
-                                              selectedWifiNetwork = state.wifiNetworks[i];
-                                            });
-                                          },
-                                        );
-                                      },
-                                    ),
-                                  ),
+                                _buildInputField(
+                                  label: 'WiFi SSID',
+                                  controller: ssidController,
+                                  hintText: 'enter WiFi network name',
+                                  prefixIcon: Icons.wifi,
+                                ),
                                 SizedBox(height: defaultPadding),
                                 _buildInputField(
                                   label: 'WiFi Passphrase',

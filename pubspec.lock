@@ -70,7 +70,7 @@ packages:
     description:
       path: "."
       ref: master
-      resolved-ref: "0dae4bb65ba363f49b07c2143ce87fe82a89263e"
+      resolved-ref: "7c0b637a49727d78faf47906653df3a57867f6db"
       url: "https://github.com/thingwire/esp_provisioning_wifi_custom.git"
     source: git
     version: "0.0.7"
