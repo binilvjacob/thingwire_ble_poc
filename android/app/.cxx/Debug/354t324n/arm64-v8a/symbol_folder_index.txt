@@ -1,0 +1,1 @@
+/Users/binilvjacob/StudioProjects/thingwire_ble_poc/build/app/intermediates/cxx/Debug/354t324n/obj/arm64-v8a

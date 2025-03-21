@@ -37,7 +37,7 @@ class _MyAppViewState extends State<MyAppView> {
   final prefixController = TextEditingController(text: 'PROV_');
   final proofOfPossessionController = TextEditingController(text: 'abcd1234');
   final passphraseController = TextEditingController();
-
+  final customDataController = TextEditingController(text: 'tester_custom2');
   pushFeedback(String msg) {
     setState(() {
       feedbackMessage = '$feedbackMessage\n$msg';
@@ -179,7 +179,7 @@ class _MyAppViewState extends State<MyAppView> {
                                         state.bluetoothDevice,
                                         proofOfPossessionController.text,
                                         wifiNetwork,
-                                        passphraseController.text));
+                                        passphraseController.text,customDataController.text));
                                 pushFeedback(
                                     'Provisioning WiFi $wifiNetwork on ${state.bluetoothDevice}');
                               },

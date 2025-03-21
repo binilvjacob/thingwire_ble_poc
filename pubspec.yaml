@@ -36,8 +36,9 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   esp_provisioning_wifi:
-    git: https://github.com/alanmosely/esp_provisioning_wifi.git
-
+    git:
+      url: https://github.com/thingwire/esp_provisioning_wifi_custom.git
+      ref: master
 
 dev_dependencies:
   flutter_test:

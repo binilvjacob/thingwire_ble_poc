@@ -1,0 +1,2 @@
+/Users/binilvjacob/StudioProjects/thingwire_ble_poc/android/app/.cxx/RelWithDebInfo/6p471l3c/x86_64/CMakeFiles/edit_cache.dir
+/Users/binilvjacob/StudioProjects/thingwire_ble_poc/android/app/.cxx/RelWithDebInfo/6p471l3c/x86_64/CMakeFiles/rebuild_cache.dir
