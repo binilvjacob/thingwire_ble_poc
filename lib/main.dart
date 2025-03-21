@@ -34,10 +34,10 @@ class _MyAppViewState extends State<MyAppView> {
 
   String feedbackMessage = '';
 
-  final prefixController = TextEditingController(text: 'PROV_');
+  final prefixController = TextEditingController();
   final proofOfPossessionController = TextEditingController(text: 'abcd1234');
   final passphraseController = TextEditingController();
-  final customDataController = TextEditingController(text: 'tester_custom2');
+  final customDataController = TextEditingController();
   pushFeedback(String msg) {
     setState(() {
       feedbackMessage = '$feedbackMessage\n$msg';
@@ -203,6 +203,28 @@ class _MyAppViewState extends State<MyAppView> {
                                   decoration: const InputDecoration(
                                       hintText: 'enter passphrase'),
                                   //obscureText: true,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Add new UI element for custom data input
+                      Flexible(
+                        child: Container(
+                          padding: EdgeInsets.all(defaultPadding),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.max,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Flexible(
+                                child: Text('Custom Data'),
+                              ),
+                              Expanded(
+                                child: TextField(
+                                  controller: customDataController,
+                                  decoration: const InputDecoration(
+                                      hintText: 'enter custom data'),
                                 ),
                               ),
                             ],
