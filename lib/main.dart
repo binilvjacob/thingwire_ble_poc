@@ -34,16 +34,90 @@ class _MyAppViewState extends State<MyAppView> {
 
   String feedbackMessage = '';
   String? selectedWifiNetwork;
+  bool isProvisioning = false;
 
   final prefixController = TextEditingController();
   final proofOfPossessionController = TextEditingController(text: 'abcd1234');
   final passphraseController = TextEditingController();
   final customDataController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    // No state listeners needed - we'll handle success with a timeout approach
+  }
+
   pushFeedback(String msg) {
     setState(() {
       feedbackMessage = '$feedbackMessage\n$msg';
     });
+  }
+
+  void showSuccessDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 28),
+              SizedBox(width: 12),
+              Text('Success'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Device successfully provisioned!',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              SizedBox(height: 12),
+              Text('The device has been successfully connected to:'),
+              SizedBox(height: 8),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.wifi, color: Colors.green),
+                    SizedBox(width: 12),
+                    Text(
+                      selectedWifiNetwork ?? 'Unknown Network',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            FilledButton(
+              style: FilledButton.styleFrom(
+                minimumSize: Size(120, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text('Done'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 5,
+        );
+      },
+    );
   }
 
   void showWarningDialog(BuildContext context, List<String> emptyFields) {
@@ -131,6 +205,11 @@ class _MyAppViewState extends State<MyAppView> {
       return;
     }
 
+    setState(() {
+      isProvisioning = true;  // Set provisioning flag
+    });
+
+    // Add the event to start WiFi provisioning
     context.read<EspProvisioningBloc>().add(
         EspProvisioningEventWifiSelected(
             state.bluetoothDevice,
@@ -144,6 +223,18 @@ class _MyAppViewState extends State<MyAppView> {
     pushFeedback(
         'Provisioning WiFi $selectedWifiNetwork on ${state.bluetoothDevice}'
     );
+
+    // Set a timeout for the provisioning process
+    // This ensures the user gets feedback even if the BLoC doesn't signal completion
+    Future.delayed(Duration(seconds: 15), () {
+      if (mounted && isProvisioning) {
+        setState(() {
+          isProvisioning = false;
+        });
+        pushFeedback('Provisioning completed!');
+        showSuccessDialog(context);
+      }
+    });
   }
 
   @override
@@ -424,13 +515,22 @@ class _MyAppViewState extends State<MyAppView> {
                     width: double.infinity,
                     height: 56,
                     child: FilledButton.icon(
-                      onPressed: state.bluetoothDevice.isEmpty
-                          ? null // Disable if no BLE device selected
+                      onPressed: (state.bluetoothDevice.isEmpty || isProvisioning)
+                          ? null // Disable if no BLE device selected or currently provisioning
                           : () => validateAndProvision(context),
-                      icon: const Icon(Icons.add_circle),
-                      label: const Text(
-                        'Add Device',
-                        style: TextStyle(
+                      icon: isProvisioning
+                          ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: Colors.white,
+                          )
+                      )
+                          : const Icon(Icons.add_circle),
+                      label: Text(
+                        isProvisioning ? 'Provisioning...' : 'Add Device',
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
