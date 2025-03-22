@@ -35,6 +35,8 @@ class _MyAppViewState extends State<MyAppView> {
   String feedbackMessage = '';
   String? selectedWifiNetwork;
   bool isProvisioning = false;
+  bool isScanningBle = false;
+  bool isScanningWifi = false;
 
   final prefixController = TextEditingController();
   final proofOfPossessionController = TextEditingController(text: 'abcd1234');
@@ -237,10 +239,71 @@ class _MyAppViewState extends State<MyAppView> {
     });
   }
 
+  void scanForBleDevices() {
+    setState(() {
+      isScanningBle = true;
+    });
+
+    context
+        .read<EspProvisioningBloc>()
+        .add(EspProvisioningEventStart(prefixController.text));
+    pushFeedback('Scanning BLE devices');
+
+    // Add a timeout for BLE scanning to update UI state
+    Future.delayed(Duration(seconds: 10), () {
+      if (mounted && isScanningBle) {
+        setState(() {
+          isScanningBle = false;
+        });
+      }
+    });
+  }
+
+  void scanForWifiNetworks(String bluetoothDevice) {
+    setState(() {
+      isScanningWifi = true;
+    });
+
+    context.read<EspProvisioningBloc>().add(
+        EspProvisioningEventBleSelected(bluetoothDevice,
+            proofOfPossessionController.text));
+    pushFeedback('Scanning WiFi on $bluetoothDevice');
+
+    // Add a timeout for WiFi scanning to update UI state
+    Future.delayed(Duration(seconds: 10), () {
+      if (mounted && isScanningWifi) {
+        setState(() {
+          isScanningWifi = false;
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<EspProvisioningBloc, EspProvisioningState>(
         builder: (context, state) {
+          // When state changes, check if we should update our scanning status
+          if (isScanningBle && state.bluetoothDevices.isNotEmpty) {
+            Future.microtask(() {
+              if (mounted) {
+                setState(() {
+                  isScanningBle = false;
+                });
+              }
+            });
+          }
+
+          if (isScanningWifi && state.wifiNetworks.isNotEmpty) {
+            Future.microtask(() {
+              if (mounted) {
+                setState(() {
+                  isScanningWifi = false;
+                });
+              }
+            });
+          }
+
           return MaterialApp(
             debugShowCheckedModeBanner: false, // Remove debug banner
             theme: ThemeData(
@@ -272,18 +335,29 @@ class _MyAppViewState extends State<MyAppView> {
                 actions: [
                   Container(
                     margin: const EdgeInsets.only(right: 16),
-                    child: IconButton(
-                      icon: const Icon(Icons.bluetooth_searching, size: 28),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                        foregroundColor: Theme.of(context).colorScheme.primary,
+                    child: isScanningBle
+                        ? Container(
+                      width: 40,
+                      height: 40,
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      onPressed: () {
-                        context
-                            .read<EspProvisioningBloc>()
-                            .add(EspProvisioningEventStart(prefixController.text));
-                        pushFeedback('Scanning BLE devices');
-                      },
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    )
+                        : ElevatedButton.icon(
+                      icon: const Icon(Icons.bluetooth_searching, size: 18),
+                      label: const Text('Tap To Scan'),
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.primary,
+                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      onPressed: () => scanForBleDevices(),
                     ),
                   ),
                 ],
@@ -377,7 +451,9 @@ class _MyAppViewState extends State<MyAppView> {
                               icon: Icons.bluetooth,
                               title: 'Bluetooth Devices',
                               children: [
-                                if (state.bluetoothDevices.isEmpty)
+                                if (isScanningBle)
+                                  _buildLoadingIndicator('Scanning for BLE devices...')
+                                else if (state.bluetoothDevices.isEmpty)
                                   _buildEmptyListPlaceholder('No devices found. Tap the bluetooth icon to scan.')
                                 else
                                   Container(
@@ -410,10 +486,7 @@ class _MyAppViewState extends State<MyAppView> {
                                           tileColor: isSelected ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3) : null,
                                           onTap: () {
                                             final bluetoothDevice = state.bluetoothDevices[i];
-                                            context.read<EspProvisioningBloc>().add(
-                                                EspProvisioningEventBleSelected(bluetoothDevice,
-                                                    proofOfPossessionController.text));
-                                            pushFeedback('Scanning WiFi on $bluetoothDevice');
+                                            scanForWifiNetworks(bluetoothDevice);
                                           },
                                         );
                                       },
@@ -426,7 +499,9 @@ class _MyAppViewState extends State<MyAppView> {
                               icon: Icons.wifi,
                               title: 'WiFi Networks',
                               children: [
-                                if (state.wifiNetworks.isEmpty)
+                                if (isScanningWifi)
+                                  _buildLoadingIndicator('Scanning for WiFi networks...')
+                                else if (state.wifiNetworks.isEmpty)
                                   _buildEmptyListPlaceholder('No WiFi networks found. Select a bluetooth device first.')
                                 else
                                   Container(
@@ -515,8 +590,8 @@ class _MyAppViewState extends State<MyAppView> {
                     width: double.infinity,
                     height: 56,
                     child: FilledButton.icon(
-                      onPressed: (state.bluetoothDevice.isEmpty || isProvisioning)
-                          ? null // Disable if no BLE device selected or currently provisioning
+                      onPressed: (state.bluetoothDevice.isEmpty || isProvisioning || isScanningBle || isScanningWifi)
+                          ? null // Disable if no BLE device selected or currently provisioning or scanning
                           : () => validateAndProvision(context),
                       icon: isProvisioning
                           ? SizedBox(
@@ -628,6 +703,35 @@ class _MyAppViewState extends State<MyAppView> {
       child: Row(
         children: [
           Icon(Icons.info_outline, color: Colors.grey.shade400),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator(String message) {
+    return Container(
+      padding: EdgeInsets.all(defaultPadding),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
